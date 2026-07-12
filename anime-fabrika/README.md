@@ -7,7 +7,23 @@
 Стек: **Next.js 14 (App Router) · Supabase (Postgres, Auth, Storage) ·
 Tailwind · shadcn/ui · vitest**.
 
-## Запуск
+## Запуск за 2 минуты (локально, без Supabase)
+
+Нужен только Node 18+. Postgres встроен (PGlite, WASM), Supabase-аккаунт не нужен:
+
+```bash
+npm install
+npm run local     # БД + API + приложение + автоворкер очереди
+# открыть http://localhost:3000
+```
+
+Первый запуск применяет миграцию и demo-seed (вселенная «Неоновый ронин»).
+Данные живут в `local/data/` между запусками; полный сброс — удалить эту папку.
+Очередь генераций обрабатывается автоматически каждые 20 секунд (мок-провайдеры),
+плюс кнопка «Прогнать воркер» на экране очереди. Аутентификация в этом режиме
+выключена (`DEMO_MODE=1` в автоматически созданном `.env.local`).
+
+## Запуск на Supabase (прод)
 
 1. Создайте проект на [supabase.com](https://supabase.com), включите Email-аутентификацию
    (Authentication → Providers → Email, magic link включён по умолчанию).
