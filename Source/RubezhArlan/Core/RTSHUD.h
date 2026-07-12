@@ -46,7 +46,9 @@ private:
 	void DrawTopBar(ARTSPlayerController* RTSController);
 	void DrawSelectionPanel(ARTSPlayerController* RTSController);
 	void DrawMinimap();
+	void DrawWorldBars(ARTSPlayerController* RTSController);
 	void DrawEndBanner();
 
 	void DrawPanelRect(float X, float Y, float W, float H);
+	void DrawHpBar(float X, float Y, float W, float Fraction);
 };

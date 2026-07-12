@@ -43,10 +43,102 @@ void ARTSHUD::DrawHUD()
 	}
 
 	DrawTopBar(RTSController);
+	DrawWorldBars(RTSController);
 	DrawSelectionPanel(RTSController);
 	DrawMinimap();
 	DrawMarquee(RTSController);
 	DrawEndBanner();
+}
+
+void ARTSHUD::DrawHpBar(float X, float Y, float W, float Fraction)
+{
+	Fraction = FMath::Clamp(Fraction, 0.f, 1.f);
+	DrawRect(FLinearColor(0.08f, 0.07f, 0.06f, 0.8f), X, Y, W, 5.f);
+	const FLinearColor Fill = Fraction > 0.55f
+		? FLinearColor(0.44f, 0.65f, 0.27f)
+		: Fraction > 0.25f ? FLinearColor(0.79f, 0.63f, 0.18f) : FLinearColor(0.75f, 0.27f, 0.16f);
+	DrawRect(Fill, X + 1.f, Y + 1.f, (W - 2.f) * Fraction, 3.f);
+}
+
+/** HP-бары над юнитами/зданиями + полоска груза грузовика. */
+void ARTSHUD::DrawWorldBars(ARTSPlayerController* RTSController)
+{
+	UWorld* World = GetWorld();
+	URTSEconomySubsystem* Econ = World ? World->GetSubsystem<URTSEconomySubsystem>() : nullptr;
+	URTSFogSubsystem* Fog = World ? World->GetSubsystem<URTSFogSubsystem>() : nullptr;
+	if (!Econ || !RTSController)
+	{
+		return;
+	}
+
+	for (AUnitBase* Unit : Econ->GetAllUnits())
+	{
+		if (!IsValid(Unit) || !Unit->Health)
+		{
+			continue;
+		}
+		if (Unit->TeamId != 0 && Fog && !Fog->IsVisibleFor(0, Unit->GetActorLocation()))
+		{
+			continue;
+		}
+		const bool bDamaged = Unit->Health->GetHp() < Unit->Health->GetMaxHp() - 0.5f;
+		const bool bCargo = Unit->UnitKind == ERTSUnitKind::Truck && Unit->Cargo > 0.f;
+		if (!bDamaged && !Unit->IsSelected() && !bCargo)
+		{
+			continue;
+		}
+		FVector2D Screen;
+		if (!RTSController->ProjectWorldLocationToScreen(Unit->GetActorLocation() + FVector(0, 0, 110.f), Screen))
+		{
+			continue;
+		}
+		if (Screen.X < -50.f || Screen.Y < -50.f || Screen.X > Canvas->SizeX + 50.f || Screen.Y > Canvas->SizeY + 50.f)
+		{
+			continue;
+		}
+		if (bDamaged || Unit->IsSelected())
+		{
+			DrawHpBar(Screen.X - 18.f, Screen.Y, 36.f, Unit->Health->GetFraction());
+		}
+		if (bCargo)
+		{
+			DrawRect(FLinearColor(0.9f, 0.85f, 0.5f, 0.9f), Screen.X - 12.f, Screen.Y + 6.f,
+			         24.f * (Unit->Cargo / RTSCore::Econ::TruckCapacity), 3.f);
+		}
+	}
+
+	for (ABuildingBase* Building : Econ->GetAllBuildings())
+	{
+		if (!IsValid(Building) || !Building->Health)
+		{
+			continue;
+		}
+		if (Building->TeamId != 0 && !Building->bSeenByPlayer)
+		{
+			continue;
+		}
+		const bool bDamaged = Building->Health->GetHp() < Building->Health->GetMaxHp() - 0.5f;
+		const bool bSite = !Building->IsCompleted();
+		if (!bDamaged && !bSite)
+		{
+			continue;
+		}
+		FVector2D Screen;
+		if (!RTSController->ProjectWorldLocationToScreen(Building->GetActorLocation() + FVector(0, 0, 360.f), Screen))
+		{
+			continue;
+		}
+		DrawHpBar(Screen.X - 30.f, Screen.Y, 60.f, Building->Health->GetFraction());
+		if (bSite)
+		{
+			// прогресс стройки — тонкая полоса фракционного цвета под HP
+			URTSDataSubsystem* Data = World->GetGameInstance()
+				? World->GetGameInstance()->GetSubsystem<URTSDataSubsystem>() : nullptr;
+			const FLinearColor Color = Data ? Data->GetFaction(Building->Faction).Color : FLinearColor::White;
+			DrawRect(FLinearColor(0.08f, 0.07f, 0.06f, 0.8f), Screen.X - 30.f, Screen.Y + 7.f, 60.f, 4.f);
+			DrawRect(Color, Screen.X - 29.f, Screen.Y + 8.f, 58.f * Building->BuildProgress, 2.f);
+		}
+	}
 }
 
 // --- миникарта: раскладка и преобразования ------------------------------------

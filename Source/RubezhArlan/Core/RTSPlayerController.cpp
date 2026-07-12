@@ -155,6 +155,19 @@ void ARTSPlayerController::PlayerTick(float DeltaSeconds)
 	{
 		DrawPlacementGhost();
 	}
+
+	// линия к точке сбора выделенного производственного здания
+	if (ABuildingBase* Building = SelectedBuilding.Get())
+	{
+		if (Building->IsCompleted() && Building->Production && Building->Production->CanProduceAnything())
+		{
+			const FVector From = Building->GetActorLocation() + FVector(0, 0, 40.f);
+			const FVector To = Building->RallyPoint + FVector(0, 0, 10.f);
+			DrawDebugLine(GetWorld(), From, To, FColor(240, 236, 218), false, -1.f, 0, 3.f);
+			DrawDebugCylinder(GetWorld(), To, To + FVector(0, 0, 6.f), 45.f, 14,
+			                  FColor(240, 236, 218), false, -1.f, 0, 2.f);
+		}
+	}
 }
 
 ARTSCameraPawn* ARTSPlayerController::GetCameraPawn() const

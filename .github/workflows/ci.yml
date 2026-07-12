@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  ue-module:
+    name: Псевдосборка UE-модуля + тесты ядра
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Псевдосборка модуля (clang + UE-шим)
+        run: Tools/check.sh
+
+      - name: Логические тесты ядра баланса
+        run: Tools/run_logic_tests.sh
+
+  web-prototype:
+    name: Веб-прототип (vitest + сборка)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: prototype-web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: prototype-web/package-lock.json
+
+      - name: Установка зависимостей
+        run: npm ci
+
+      - name: Тесты баланса и A*
+        run: npm test
+
+      - name: Прод-сборка
+        run: npm run build
