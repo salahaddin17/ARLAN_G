@@ -6,8 +6,9 @@ public class RubezhArlanTarget : TargetRules
 	public RubezhArlanTarget(TargetInfo Target) : base(Target)
 	{
 		Type = TargetType.Game;
-		DefaultBuildSettings = BuildSettingsVersion.V5;
-		IncludeOrderVersion = EngineIncludeOrderVersion.Unreal5_5;
+		// Latest — не привязываемся к минорной версии движка (5.8+)
+		DefaultBuildSettings = BuildSettingsVersion.Latest;
+		IncludeOrderVersion = EngineIncludeOrderVersion.Latest;
 		ExtraModuleNames.Add("RubezhArlan");
 	}
 }

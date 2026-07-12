@@ -1,13 +1,15 @@
 # RUBEZH: ARLAN — UE5 RTS (контекст проекта)
 
-Top-down RTS «РУБЕЖ: АРЛАН» на Unreal Engine 5.5, стиль «штабная карта».
+Top-down RTS «РУБЕЖ: АРЛАН» на Unreal Engine 5.8+, стиль «штабная карта».
+Target-файлы используют BuildSettingsVersion.Latest — жёсткой привязки
+к минорной версии движка нет.
 Разработчик — соло-новичок в UE; Claude — инженерный отдел: пишет код,
 человек кликает в редакторе по инструкциям из `EDITOR_TASKS.md`.
 
 ## Правда о среде
 
 - Облачная Claude-сессия — Linux без UE/VS: настоящая сборка UBT возможна
-  только на машине пользователя (Windows, UE 5.5 + VS 2022 C++ workload).
+  только на машине пользователя (Windows, UE 5.8 + VS 2022 C++ workload).
 - Здесь работает «псевдосборка»: `Tools/check.sh` компилирует модуль clang++
   с мини-шимом UE-заголовков (`Tools/shim/`). Она ловит ошибки C++ в нашем
   коде, но НЕ гарантирует совместимость с настоящими API UE — финальная
@@ -20,15 +22,15 @@ Top-down RTS «РУБЕЖ: АРЛАН» на Unreal Engine 5.5, стиль «ш�
 
 ```bat
 :: сборка редактора
-"C:\Program Files\Epic Games\UE_5.5\Engine\Build\BatchFiles\Build.bat" ^
+"C:\Program Files\Epic Games\UE_5.8\Engine\Build\BatchFiles\Build.bat" ^
   RubezhArlanEditor Win64 Development -project="%CD%\RubezhArlan.uproject" -waitmutex
 
 :: запуск редактора
-"C:\Program Files\Epic Games\UE_5.5\Engine\Binaries\Win64\UnrealEditor.exe" ^
+"C:\Program Files\Epic Games\UE_5.8\Engine\Binaries\Win64\UnrealEditor.exe" ^
   "%CD%\RubezhArlan.uproject"
 
 :: Automation-тесты из командной строки
-"C:\Program Files\Epic Games\UE_5.5\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" ^
+"C:\Program Files\Epic Games\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" ^
   "%CD%\RubezhArlan.uproject" -ExecCmds="Automation RunTests Rubezh; Quit" ^
   -unattended -nop4 -nosplash -log
 ```
@@ -82,5 +84,5 @@ Tests/   Automation-тесты (зеркалят Tools/logic_tests.cpp)
 - Ветка: `claude/sharp-cerf-2536nr`. Мелкие коммиты после каждого блока.
 - `PROGRESS.md` — сделано/дальше/проблемы (обновлять каждый блок).
 - `EDITOR_TASKS.md` — шаги пользователя в редакторе, по 1-2 строки, для новичка.
-- Push сейчас отдаёт 403: GitHub-приложению Claude нужно право
-  Read & Write → Contents на репозиторий. До того — git bundle пользователю.
+- Push работает (после Unsuspend установки GitHub-приложения). CI на
+  GitHub Actions гоняет псевдосборку и все тесты на каждый push.

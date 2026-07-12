@@ -5,8 +5,8 @@
 
 ## 0. Установка (однократно, ~1-2 часа скачивания)
 
-1. Epic Games Launcher → Unreal Engine → Library → `+` → **UE 5.5.x** → Install
-   (галочки по умолчанию; путь `C:\Program Files\Epic Games\UE_5.5`).
+1. Epic Games Launcher → Unreal Engine → Library → `+` → **UE 5.8.x (последняя)** → Install
+   (галочки по умолчанию; путь `C:\Program Files\Epic Games\UE_5.8`).
 2. **Visual Studio 2022 Community**: winget или сайт MS. В установщике отметить
    workload **«Разработка игр на C++»** (Game development with C++), внутри —
    галочку «Unreal Engine installer» (если есть).
@@ -23,11 +23,11 @@
 ## 2. Собрать проект
 
 5. ПКМ по `RubezhArlan.uproject` → **Generate Visual Studio project files**.
-   (Если пункта нет: панель Epic Launcher → UE 5.5 → Options → включён ли
+   (Если пункта нет: панель Epic Launcher → UE 5.8 → Options → включён ли
    «Editor symbols»? Не обязательно. Пункт даёт установка UE.)
 6. Сборка из командной строки (из папки проекта, cmd):
    ```bat
-   "C:\Program Files\Epic Games\UE_5.5\Engine\Build\BatchFiles\Build.bat" RubezhArlanEditor Win64 Development -project="%CD%\RubezhArlan.uproject" -waitmutex
+   "C:\Program Files\Epic Games\UE_5.8\Engine\Build\BatchFiles\Build.bat" RubezhArlanEditor Win64 Development -project="%CD%\RubezhArlan.uproject" -waitmutex
    ```
    Ошибки компиляции? Скопируй ЦЕЛИКОМ первый `error ...` в чат следующей
    сессии — псевдосборка ловит не всё, это ожидаемо.
@@ -56,7 +56,7 @@
     отметь все 4 теста → Start Tests. Все зелёные?
     Либо из cmd:
     ```bat
-    "C:\Program Files\Epic Games\UE_5.5\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" "%CD%\RubezhArlan.uproject" -ExecCmds="Automation RunTests Rubezh; Quit" -unattended -nop4 -nosplash -log
+    "C:\Program Files\Epic Games\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" "%CD%\RubezhArlan.uproject" -ExecCmds="Automation RunTests Rubezh; Quit" -unattended -nop4 -nosplash -log
     ```
 
 ## 5. Опционально

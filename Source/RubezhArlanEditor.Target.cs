@@ -6,8 +6,9 @@ public class RubezhArlanEditorTarget : TargetRules
 	public RubezhArlanEditorTarget(TargetInfo Target) : base(Target)
 	{
 		Type = TargetType.Editor;
-		DefaultBuildSettings = BuildSettingsVersion.V5;
-		IncludeOrderVersion = EngineIncludeOrderVersion.Unreal5_5;
+		// Latest — не привязываемся к минорной версии движка (5.8+)
+		DefaultBuildSettings = BuildSettingsVersion.Latest;
+		IncludeOrderVersion = EngineIncludeOrderVersion.Latest;
 		ExtraModuleNames.Add("RubezhArlan");
 	}
 }

@@ -138,3 +138,11 @@
 Ветка `claude/sharp-cerf-2536nr`. Push в GitHub блокирован (у приложения
 Claude нет права записи — нужно Read & Write → Contents в настройках
 установки на репозиторий salahaddin17/ARLAN_G). Резерв — git bundle.
+
+## Ретаргет на UE 5.8 (2026-07-12, вечер)
+
+- [x] Вышел UE 5.8 — проект переведён: EngineAssociation 5.8,
+      Target-файлы на BuildSettingsVersion.Latest / IncludeOrderVersion.Latest
+      (жёсткой привязки к минору больше нет), документация обновлена.
+      По официальным заметкам 5.8 ломающих C++-изменений нет; правда,
+      как всегда, за UnrealBuildTool при первой реальной сборке.
