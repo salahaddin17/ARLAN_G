@@ -147,7 +147,7 @@ void AUnitBase::InitUnit(ERTSUnitKind InKind, uint8 InTeamId)
 
 // --- процедурный риг ------------------------------------------------------------
 
-UStaticMeshComponent* AUnitBase::MakePart(UStaticMesh* Mesh, USceneComponent* Parent,
+UStaticMeshComponent* AUnitBase::MakePart(UStaticMesh* PartMesh, USceneComponent* Parent,
                                           const FVector& RelLocation, const FVector& RelScale,
                                           const FLinearColor& Color)
 {
@@ -158,9 +158,9 @@ UStaticMeshComponent* AUnitBase::MakePart(UStaticMesh* Mesh, USceneComponent* Pa
 	}
 	Part->SetupAttachment(Parent);
 	Part->RegisterComponent();
-	if (Mesh)
+	if (PartMesh)
 	{
-		Part->SetStaticMesh(Mesh);
+		Part->SetStaticMesh(PartMesh);
 	}
 	Part->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	Part->SetCanEverAffectNavigation(false);

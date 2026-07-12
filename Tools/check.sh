@@ -78,6 +78,7 @@ done
 CXX="${CXX:-clang++}"
 FLAGS=(-std=c++17 -fsyntax-only -x c++
   -Wall -Wextra
+  -Werror=shadow -Werror=shadow-field
   -Wno-unused-parameter -Wno-unused-variable -Wno-unused-private-field
   -Wno-unused-function -Wno-missing-field-initializers
   -I "$SRC" -I "$UE" -I "$GEN"

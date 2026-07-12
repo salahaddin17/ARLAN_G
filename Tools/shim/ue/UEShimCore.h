@@ -634,14 +634,14 @@ public:
 	virtual bool Destroy() { return true; }
 	bool IsActorBeingDestroyed() const { return false; }
 
-	FVector GetActorLocation() const { return Location; }
-	bool SetActorLocation(const FVector& In) { Location = In; return true; }
-	FRotator GetActorRotation() const { return Rotation; }
-	bool SetActorRotation(const FRotator& In) { Rotation = In; return true; }
-	FVector GetActorForwardVector() const { return Rotation.Vector(); }
+	FVector GetActorLocation() const { return ShimActorLocation; }
+	bool SetActorLocation(const FVector& In) { ShimActorLocation = In; return true; }
+	FRotator GetActorRotation() const { return ShimActorRotation; }
+	bool SetActorRotation(const FRotator& In) { ShimActorRotation = In; return true; }
+	FVector GetActorForwardVector() const { return ShimActorRotation.Vector(); }
 	FVector GetVelocity() const { return FVector(); }
-	void SetActorHiddenInGame(bool bHidden) { bHiddenInGame = bHidden; }
-	bool IsHidden() const { return bHiddenInGame; }
+	void SetActorHiddenInGame(bool bHidden) { bShimHiddenInGame = bHidden; }
+	bool IsHidden() const { return bShimHiddenInGame; }
 	void SetActorEnableCollision(bool) {}
 	void SetActorTickEnabled(bool) {}
 	void SetLifeSpan(float) {}
@@ -660,9 +660,11 @@ public:
 	template <typename T>
 	T* FindComponentByClass() const { return nullptr; }
 
-	FVector Location;
-	FRotator Rotation;
-	bool bHiddenInGame = false;
+	// имена нарочно «шимовые»: в реальном AActor таких публичных полей нет,
+	// и они не должны конфликтовать с параметрами игрового кода (-Wshadow-field)
+	FVector ShimActorLocation;
+	FRotator ShimActorRotation;
+	bool bShimHiddenInGame = false;
 };
 
 inline UWorld* UActorComponent::GetWorld() const { return Owner ? Owner->GetWorld() : nullptr; }

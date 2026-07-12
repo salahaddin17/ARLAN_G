@@ -85,7 +85,7 @@ private:
 	float DeathTimer = 0.f;
 
 	void SetupTokenVisual();
-	UStaticMeshComponent* MakePart(UStaticMesh* Mesh, USceneComponent* Parent,
+	UStaticMeshComponent* MakePart(UStaticMesh* PartMesh, USceneComponent* Parent,
 	                               const FVector& RelLocation, const FVector& RelScale,
 	                               const FLinearColor& Color);
 	void TickAnimations(float DeltaSeconds);
