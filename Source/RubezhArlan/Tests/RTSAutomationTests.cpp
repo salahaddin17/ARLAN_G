@@ -15,7 +15,7 @@ using namespace RTSCore;
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRubezhDamageMatrixTest,
 	"Rubezh.Balance.DamageMatrix",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 
 bool FRubezhDamageMatrixTest::RunTest(const FString& Parameters)
 {
@@ -46,7 +46,7 @@ bool FRubezhDamageMatrixTest::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRubezhFactionTest,
 	"Rubezh.Balance.Factions",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 
 bool FRubezhFactionTest::RunTest(const FString& Parameters)
 {
@@ -68,7 +68,7 @@ bool FRubezhFactionTest::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRubezhEconomyTest,
 	"Rubezh.Economy.TruckCycle",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 
 bool FRubezhEconomyTest::RunTest(const FString& Parameters)
 {
@@ -102,7 +102,7 @@ bool FRubezhEconomyTest::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRubezhSplashTest,
 	"Rubezh.Combat.Splash",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 
 bool FRubezhSplashTest::RunTest(const FString& Parameters)
 {

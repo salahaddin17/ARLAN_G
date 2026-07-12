@@ -1,6 +1,8 @@
 #include "Core/RTSPlayerController.h"
 #include "RubezhArlan.h"
 #include "Core/RTSCameraPawn.h"
+#include "Core/RTSGameMode.h"
+#include "Core/RTSHUD.h"
 #include "Units/UnitBase.h"
 #include "Units/RTSAIController.h"
 #include "Buildings/BuildingBase.h"
@@ -54,6 +56,8 @@ void ARTSPlayerController::SetupInputComponent()
 	InputComponent->BindKey(EKeys::A, IE_Pressed, this, &ARTSPlayerController::OnAttackMoveKey);
 	InputComponent->BindKey(EKeys::Escape, IE_Pressed, this, &ARTSPlayerController::OnEscapeKey);
 	InputComponent->BindKey(EKeys::H, IE_Pressed, this, &ARTSPlayerController::OnFocusBaseKey);
+	InputComponent->BindKey(EKeys::SpaceBar, IE_Pressed, this, &ARTSPlayerController::OnConfirmKey);
+	InputComponent->BindKey(EKeys::F, IE_Pressed, this, &ARTSPlayerController::OnSelectArmyKey);
 	InputComponent->BindKey(EKeys::Q, IE_Pressed, this, &ARTSPlayerController::OnActionQ);
 	InputComponent->BindKey(EKeys::W, IE_Pressed, this, &ARTSPlayerController::OnActionW);
 	InputComponent->BindKey(EKeys::E, IE_Pressed, this, &ARTSPlayerController::OnActionE);
@@ -87,12 +91,50 @@ void ARTSPlayerController::OnActionT() { HandleActionSlot(4); }
 
 // --- каждый кадр -----------------------------------------------------------------
 
+ARTSGameMode* ARTSPlayerController::GetRTSGameMode() const
+{
+	return GetWorld() ? Cast<ARTSGameMode>(GetWorld()->GetAuthGameMode()) : nullptr;
+}
+
+bool ARTSPlayerController::IsMatchPlaying() const
+{
+	const ARTSGameMode* Mode = GetRTSGameMode();
+	return Mode && Mode->GetPhase() == ERTSMatchPhase::Playing;
+}
+
+bool ARTSPlayerController::MinimapHit(float ScreenX, float ScreenY, FVector& OutWorld) const
+{
+	int32 ViewX, ViewY;
+	GetViewportSize(ViewX, ViewY);
+	const FRTSMinimapLayout Layout = ARTSHUD::GetMinimapLayout(float(ViewX), float(ViewY));
+	if (!Layout.Contains(ScreenX, ScreenY))
+	{
+		return false;
+	}
+	OutWorld = ARTSHUD::MinimapToWorld(Layout, ScreenX, ScreenY);
+	return true;
+}
+
 void ARTSPlayerController::PlayerTick(float DeltaSeconds)
 {
 	APlayerController::PlayerTick(DeltaSeconds);
 
+	// перетаскивание по миникарте — камера следует за курсором
+	if (bMinimapDrag)
+	{
+		FVector World;
+		const FVector2D Mouse = GetMouseScreen();
+		if (MinimapHit(Mouse.X, Mouse.Y, World))
+		{
+			if (ARTSCameraPawn* Cam = GetCameraPawn())
+			{
+				Cam->CenterOn(World);
+			}
+		}
+	}
+
 	// стартовый фокус на своей базе
-	if (!bInitialCameraSet)
+	if (!bInitialCameraSet && IsMatchPlaying())
 	{
 		if (URTSEconomySubsystem* Econ = GetWorld() ? GetWorld()->GetSubsystem<URTSEconomySubsystem>() : nullptr)
 		{
@@ -123,7 +165,7 @@ ARTSCameraPawn* ARTSPlayerController::GetCameraPawn() const
 void ARTSPlayerController::TickCamera(float DeltaSeconds)
 {
 	ARTSCameraPawn* Cam = GetCameraPawn();
-	if (!Cam)
+	if (!Cam || !IsMatchPlaying())
 	{
 		return;
 	}
@@ -301,6 +343,26 @@ ASupplyDepot* ARTSPlayerController::FindDepotNear(const FVector& Point, float Ma
 
 void ARTSPlayerController::OnLeftPressed()
 {
+	if (!IsMatchPlaying())
+	{
+		return;
+	}
+
+	// клик по миникарте — перенос камеры (и перетаскивание, пока держим ЛКМ)
+	{
+		const FVector2D Mouse = GetMouseScreen();
+		FVector World;
+		if (MinimapHit(Mouse.X, Mouse.Y, World))
+		{
+			if (ARTSCameraPawn* Cam = GetCameraPawn())
+			{
+				Cam->CenterOn(World);
+			}
+			bMinimapDrag = true;
+			return;
+		}
+	}
+
 	if (bPlacing)
 	{
 		ConfirmPlacement();
@@ -322,6 +384,11 @@ void ARTSPlayerController::OnLeftPressed()
 
 void ARTSPlayerController::OnLeftReleased()
 {
+	if (bMinimapDrag)
+	{
+		bMinimapDrag = false;
+		return;
+	}
 	if (!bSelecting)
 	{
 		return;
@@ -447,6 +514,10 @@ bool ARTSPlayerController::HasTechnicianSelected() const
 
 void ARTSPlayerController::OnRightPressed()
 {
+	if (!IsMatchPlaying())
+	{
+		return;
+	}
 	if (bPlacing)
 	{
 		bPlacing = false; // отмена стройки
@@ -457,6 +528,18 @@ void ARTSPlayerController::OnRightPressed()
 		bAttackMoveArmed = false;
 		return;
 	}
+
+	// ПКМ по миникарте — приказ в мировую точку
+	{
+		const FVector2D Mouse = GetMouseScreen();
+		FVector World;
+		if (MinimapHit(Mouse.X, Mouse.Y, World))
+		{
+			IssueContextOrder(World);
+			return;
+		}
+	}
+
 	FVector Point;
 	if (CursorToGround(Point))
 	{
@@ -705,6 +788,24 @@ void ARTSPlayerController::OnWheelDown()
 
 void ARTSPlayerController::HandleGroupDigit(int32 Digit)
 {
+	// стартовое меню: 1/2 — фракция, 3/4/5 — сложность
+	if (ARTSGameMode* Mode = GetRTSGameMode())
+	{
+		if (Mode->GetPhase() == ERTSMatchPhase::Setup)
+		{
+			switch (Digit)
+			{
+			case 1: Mode->SetPlayerFaction(ERTSFaction::Legion); break;
+			case 2: Mode->SetPlayerFaction(ERTSFaction::Front); break;
+			case 3: Mode->SetDifficulty(ERTSDifficulty::Easy); break;
+			case 4: Mode->SetDifficulty(ERTSDifficulty::Normal); break;
+			case 5: Mode->SetDifficulty(ERTSDifficulty::Hard); break;
+			default: break;
+			}
+			return;
+		}
+	}
+
 	const bool bCtrl = IsInputKeyDown(EKeys::LeftControl) || IsInputKeyDown(EKeys::RightControl);
 	if (bCtrl)
 	{
@@ -749,8 +850,68 @@ void ARTSPlayerController::HandleGroupDigit(int32 Digit)
 
 // --- контекстные действия Q/W/E/R/T ---------------------------------------------------------
 
+void ARTSPlayerController::OnConfirmKey()
+{
+	if (ARTSGameMode* Mode = GetRTSGameMode())
+	{
+		if (Mode->GetPhase() == ERTSMatchPhase::Setup)
+		{
+			Mode->ConfirmStart();
+		}
+	}
+}
+
+void ARTSPlayerController::OnSelectArmyKey()
+{
+	// F — выделить все боевые юниты, видимые на экране
+	if (!IsMatchPlaying())
+	{
+		return;
+	}
+	URTSEconomySubsystem* Econ = GetWorld() ? GetWorld()->GetSubsystem<URTSEconomySubsystem>() : nullptr;
+	if (!Econ)
+	{
+		return;
+	}
+	int32 ViewX, ViewY;
+	GetViewportSize(ViewX, ViewY);
+
+	ClearSelection();
+	for (AUnitBase* Unit : Econ->GetAllUnits())
+	{
+		if (!IsValid(Unit) || Unit->TeamId != 0 || !Unit->IsCombatUnit())
+		{
+			continue;
+		}
+		FVector2D Screen;
+		if (ProjectWorldLocationToScreen(Unit->GetActorLocation(), Screen) &&
+			Screen.X >= 0.f && Screen.X <= float(ViewX) && Screen.Y >= 0.f && Screen.Y <= float(ViewY))
+		{
+			SelectedUnits.AddUnique(TWeakObjectPtr<AUnitBase>(Unit));
+			Unit->SetSelected(true);
+		}
+	}
+}
+
 void ARTSPlayerController::HandleActionSlot(int32 Slot)
 {
+	// после финала R — новая операция
+	if (ARTSGameMode* Mode = GetRTSGameMode())
+	{
+		if (Mode->GetPhase() == ERTSMatchPhase::Ended)
+		{
+			if (Slot == 3) // клавиша R
+			{
+				Mode->RestartMatch();
+			}
+			return;
+		}
+		if (Mode->GetPhase() != ERTSMatchPhase::Playing)
+		{
+			return;
+		}
+	}
+
 	// производство выделенного здания
 	if (ABuildingBase* Building = SelectedBuilding.Get())
 	{

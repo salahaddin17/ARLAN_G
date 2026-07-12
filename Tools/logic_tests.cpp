@@ -140,6 +140,57 @@ static void TestSplash()
 	CHECK(SplashFalloff(60.f, 120.f) >= SplashFalloff(119.f, 120.f));
 }
 
+/** Время убийства B юнитом A (без промахов и передвижения). */
+static float TimeToKill(EUnit Attacker, EFaction AttackerFaction, EUnit Target, EFaction TargetFaction)
+{
+	const FUnitStats& A = Unit(Attacker);
+	const float Dps = EffectiveDamage(A.Damage, AttackerFaction, A.DmgType, Unit(Target).Armor) / A.Cooldown;
+	return ScaledHp(Unit(Target).MaxHp, TargetFaction) / Dps;
+}
+
+static void TestTimeToKill()
+{
+	// зеркальная дуэль пехотинцев — в разумном окне (не мгновенно, не вечно)
+	const float Mirror = TimeToKill(EUnit::Rifleman, EFaction::Front, EUnit::Rifleman, EFaction::Front);
+	CHECK(Mirror > 2.f && Mirror < 10.f);
+
+	// контр-юнит: ракетчик убивает танк более чем в 2.5 раза быстрее пехотинца
+	const float RocketVsTank = TimeToKill(EUnit::Rocketeer, EFaction::Front, EUnit::Tank, EFaction::Front);
+	const float RifleVsTank = TimeToKill(EUnit::Rifleman, EFaction::Front, EUnit::Tank, EFaction::Front);
+	CHECK(RocketVsTank * 2.5f < RifleVsTank);
+
+	// артиллерия НЕ ваншотит пехоту даже с бонусом Легиона (+15% урона)
+	CHECK(EffectiveDamage(Unit(EUnit::Artillery).Damage, EFaction::Legion, EDmg::Shell, EArmor::INF) <
+	      ScaledHp(Unit(EUnit::Rifleman).MaxHp, EFaction::Front));
+
+	// танк выигрывает дуэль у одиночной турели (турель — сдерживание, не стена)
+	const FBuildingStats& Turret = Building(EBuilding::Turret);
+	const float TankDps = EffectiveDamage(Unit(EUnit::Tank).Damage, EFaction::Front, EDmg::Shell, EArmor::BLD)
+		/ Unit(EUnit::Tank).Cooldown;
+	const float TurretDps = EffectiveDamage(Turret.Damage, EFaction::Front, Turret.DmgType, EArmor::HVY)
+		/ Turret.Cooldown;
+	const float TankKillsTurret = ScaledHp(Turret.MaxHp, EFaction::Front) / TankDps;
+	const float TurretKillsTank = ScaledHp(Unit(EUnit::Tank).MaxHp, EFaction::Front) / TurretDps;
+	CHECK(TankKillsTurret < TurretKillsTank);
+
+	// но пехотинца турель перемалывает быстро (< 6 c)
+	const float TurretVsInf = (ScaledHp(Unit(EUnit::Rifleman).MaxHp, EFaction::Front)) /
+		(EffectiveDamage(Turret.Damage, EFaction::Front, Turret.DmgType, EArmor::INF) / Turret.Cooldown);
+	CHECK(TurretVsInf < 6.f);
+}
+
+static void TestWaveArrival()
+{
+	// первая стычка в окне 3–5 минут: старт волны + марш через карту
+	const float MarchDistance = 5940.f; // диагональ между базами, UU
+	for (uint8_t d = 0; d < 3; ++d)
+	{
+		const float SlowestSpeed = Unit(EUnit::Rocketeer).Speed; // медленный боевой юнит
+		const float Arrival = DifficultyStats[d].FirstWaveAt + MarchDistance / SlowestSpeed;
+		CHECK(Arrival >= 180.f && Arrival <= 300.f);
+	}
+}
+
 static void TestDifficulty()
 {
 	CHECK(Difficulty(EDifficulty::Easy).IncomeMul < Difficulty(EDifficulty::Hard).IncomeMul);
@@ -159,6 +210,8 @@ int main()
 	TestEconomy();
 	TestUnitsAndBuildings();
 	TestSplash();
+	TestTimeToKill();
+	TestWaveArrival();
 	TestDifficulty();
 
 	std::printf("%s: %d/%d проверок пройдено\n", GFailed == 0 ? "OK" : "FAILED", GTotal - GFailed, GTotal);

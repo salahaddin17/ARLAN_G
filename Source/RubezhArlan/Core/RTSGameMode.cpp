@@ -10,6 +10,7 @@
 #include "Econ/SupplyDepot.h"
 #include "Fog/RTSFogSubsystem.h"
 #include "AI/EnemyCommander.h"
+#include "Kismet/GameplayStatics.h"
 #include "Engine/World.h"
 
 ARTSGameMode::ARTSGameMode()
@@ -23,13 +24,48 @@ ARTSGameMode::ARTSGameMode()
 void ARTSGameMode::StartPlay()
 {
 	AGameModeBase::StartPlay();
+	Phase = ERTSMatchPhase::Setup;
+	if (bSkipSetupMenu)
+	{
+		ConfirmStart();
+	}
+	UE_LOG(LogRubezh, Log, TEXT("РУБЕЖ: АРЛАН — ожидание старта (меню)"));
+}
 
+void ARTSGameMode::SetPlayerFaction(ERTSFaction Faction)
+{
+	if (Phase == ERTSMatchPhase::Setup)
+	{
+		PlayerFaction = Faction;
+	}
+}
+
+void ARTSGameMode::SetDifficulty(ERTSDifficulty InDifficulty)
+{
+	if (Phase == ERTSMatchPhase::Setup)
+	{
+		Difficulty = InDifficulty;
+	}
+}
+
+void ARTSGameMode::ConfirmStart()
+{
+	if (Phase != ERTSMatchPhase::Setup)
+	{
+		return;
+	}
 	if (URTSEconomySubsystem* Econ = GetWorld()->GetSubsystem<URTSEconomySubsystem>())
 	{
 		Econ->SetupMatch(PlayerFaction, Difficulty);
 	}
 	SpawnWorldContent();
+	Phase = ERTSMatchPhase::Playing;
 	UE_LOG(LogRubezh, Log, TEXT("РУБЕЖ: АРЛАН — матч начат"));
+}
+
+void ARTSGameMode::RestartMatch()
+{
+	UGameplayStatics::OpenLevel(this, FName(TEXT("TestMap")));
 }
 
 void ARTSGameMode::Tick(float DeltaSeconds)
@@ -37,11 +73,12 @@ void ARTSGameMode::Tick(float DeltaSeconds)
 	AGameModeBase::Tick(DeltaSeconds);
 
 	UWorld* World = GetWorld();
-	if (!World)
+	if (!World || Phase != ERTSMatchPhase::Playing)
 	{
 		return;
 	}
-	if (URTSEconomySubsystem* Econ = World->GetSubsystem<URTSEconomySubsystem>())
+	URTSEconomySubsystem* Econ = World->GetSubsystem<URTSEconomySubsystem>();
+	if (Econ)
 	{
 		Econ->Step(DeltaSeconds);
 		if (!bInitialOrdersGiven && Econ->GetMatchTime() > 0.5f)
@@ -53,6 +90,10 @@ void ARTSGameMode::Tick(float DeltaSeconds)
 	if (URTSFogSubsystem* Fog = World->GetSubsystem<URTSFogSubsystem>())
 	{
 		Fog->Step(DeltaSeconds);
+	}
+	if (Econ && Econ->IsMatchEnded())
+	{
+		Phase = ERTSMatchPhase::Ended;
 	}
 }
 

@@ -52,6 +52,7 @@ private:
 	bool bPlacing = false;
 	ERTSBuildingKind PlacementKind = ERTSBuildingKind::Power;
 	bool bInitialCameraSet = false;
+	bool bMinimapDrag = false;
 
 	// --- ввод -----------------------------------------------------------------
 	void OnLeftPressed();
@@ -63,6 +64,8 @@ private:
 	void OnAttackMoveKey();
 	void OnEscapeKey();
 	void OnFocusBaseKey();
+	void OnConfirmKey();
+	void OnSelectArmyKey();
 	void OnActionQ(); void OnActionW(); void OnActionE(); void OnActionR(); void OnActionT();
 	void OnDigit1(); void OnDigit2(); void OnDigit3(); void OnDigit4(); void OnDigit5();
 	void OnDigit6(); void OnDigit7(); void OnDigit8(); void OnDigit9();
@@ -73,6 +76,12 @@ private:
 	// --- камера ------------------------------------------------------------------
 	void TickCamera(float DeltaSeconds);
 	ARTSCameraPawn* GetCameraPawn() const;
+
+	// --- фаза матча и миникарта ------------------------------------------------
+	class ARTSGameMode* GetRTSGameMode() const;
+	bool IsMatchPlaying() const;
+	/** true, если точка экрана в миникарте; OutWorld — мировая точка. */
+	bool MinimapHit(float ScreenX, float ScreenY, FVector& OutWorld) const;
 
 	// --- курсор/мир -----------------------------------------------------------------
 	bool CursorToGround(FVector& OutPoint) const;

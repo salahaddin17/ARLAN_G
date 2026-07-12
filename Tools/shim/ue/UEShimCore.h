@@ -874,6 +874,7 @@ class UGameplayStatics
 public:
 	static APlayerController* GetPlayerController(const UObject*, int32) { return nullptr; }
 	static AGameModeBase* GetGameMode(const UObject*) { return nullptr; }
+	static void OpenLevel(const UObject*, FName, bool = true, FString = FString()) {}
 };
 
 namespace ConstructorHelpers

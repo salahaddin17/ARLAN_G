@@ -1,12 +1,16 @@
 #include "Core/RTSHUD.h"
 #include "RubezhArlan.h"
 #include "Core/RTSPlayerController.h"
+#include "Core/RTSGameMode.h"
+#include "Core/RTSCameraPawn.h"
 #include "Units/UnitBase.h"
 #include "Buildings/BuildingBase.h"
 #include "Components/RTSHealthComponent.h"
 #include "Components/RTSProductionComponent.h"
 #include "Data/RTSDataSubsystem.h"
 #include "Econ/RTSEconomySubsystem.h"
+#include "Econ/SupplyDepot.h"
+#include "Fog/RTSFogSubsystem.h"
 #include "Engine/Canvas.h"
 #include "Engine/World.h"
 #include "Engine/GameInstance.h"
@@ -30,10 +34,102 @@ void ARTSHUD::DrawHUD()
 	{
 		return;
 	}
+
+	const ARTSGameMode* Mode = GetWorld() ? Cast<ARTSGameMode>(GetWorld()->GetAuthGameMode()) : nullptr;
+	if (Mode && Mode->GetPhase() == ERTSMatchPhase::Setup)
+	{
+		DrawSetupMenu();
+		return;
+	}
+
 	DrawTopBar(RTSController);
 	DrawSelectionPanel(RTSController);
+	DrawMinimap();
 	DrawMarquee(RTSController);
 	DrawEndBanner();
+}
+
+// --- миникарта: раскладка и преобразования ------------------------------------
+
+FRTSMinimapLayout ARTSHUD::GetMinimapLayout(float ViewX, float ViewY)
+{
+	FRTSMinimapLayout Layout;
+	Layout.Size = 220.f;
+	Layout.X = ViewX - Layout.Size - 12.f;
+	Layout.Y = ViewY - 120.f - Layout.Size - 10.f; // над нижней панелью
+	return Layout;
+}
+
+FVector ARTSHUD::MinimapToWorld(const FRTSMinimapLayout& Layout, float PX, float PY)
+{
+	const float H = RTSCore::MapHalfSize;
+	const float U = FMath::Clamp((PX - Layout.X) / Layout.Size, 0.f, 1.f);
+	const float V = FMath::Clamp((PY - Layout.Y) / Layout.Size, 0.f, 1.f);
+	// экранный «верх» миникарты = мировой +X; «право» = +Y
+	return FVector((1.f - V) * 2.f * H - H, U * 2.f * H - H, 0.f);
+}
+
+FVector2D ARTSHUD::WorldToMinimap(const FRTSMinimapLayout& Layout, const FVector& World)
+{
+	const float H = RTSCore::MapHalfSize;
+	const float U = (float(World.Y) + H) / (2.f * H);
+	const float V = 1.f - (float(World.X) + H) / (2.f * H);
+	return FVector2D(Layout.X + U * Layout.Size, Layout.Y + V * Layout.Size);
+}
+
+// --- стартовое меню --------------------------------------------------------------
+
+void ARTSHUD::DrawSetupMenu()
+{
+	UWorld* World = GetWorld();
+	URTSDataSubsystem* Data = World && World->GetGameInstance()
+		? World->GetGameInstance()->GetSubsystem<URTSDataSubsystem>() : nullptr;
+	ARTSGameMode* Mode = World ? Cast<ARTSGameMode>(World->GetAuthGameMode()) : nullptr;
+	if (!Data || !Mode)
+	{
+		return;
+	}
+
+	DrawRect(FLinearColor(0.05f, 0.055f, 0.065f, 0.94f), 0.f, 0.f, Canvas->SizeX, Canvas->SizeY);
+
+	const float CX = Canvas->SizeX * 0.5f;
+	float Y = Canvas->SizeY * 0.24f;
+
+	const FFactionRow& Legion = Data->GetFaction(ERTSFaction::Legion);
+	const FFactionRow& Front = Data->GetFaction(ERTSFaction::Front);
+
+	DrawText(TEXT("Р У Б Е Ж :  А Р Л А Н"), Legion.Color, CX - 260.f, Y, nullptr, 3.f);
+	Y += 70.f;
+	DrawText(TEXT("тактическая операция · штабная карта"), TextMuted, CX - 150.f, Y);
+	Y += 60.f;
+
+	const ERTSFaction Picked = Mode->PlayerFaction;
+	DrawText(TEXT("Фракция:"), TextMain, CX - 300.f, Y);
+	DrawText(FString::Printf(TEXT("[1] %s — дороже, крепче, больнее"), *Legion.DisplayName),
+	         Picked == ERTSFaction::Legion ? Legion.Color : TextMuted, CX - 180.f, Y);
+	Y += 28.f;
+	DrawText(FString::Printf(TEXT("[2] %s — дешевле и быстрее"), *Front.DisplayName),
+	         Picked == ERTSFaction::Front ? Front.Color : TextMuted, CX - 180.f, Y);
+	Y += 48.f;
+
+	DrawText(TEXT("Сложность:"), TextMain, CX - 300.f, Y);
+	const ERTSDifficulty Diff = Mode->Difficulty;
+	const TCHAR* DiffKeys[3] = {TEXT("[3]"), TEXT("[4]"), TEXT("[5]")};
+	for (int32 I = 0; I < 3; ++I)
+	{
+		const FDifficultyRow& Row = Data->GetDifficulty(ERTSDifficulty(I));
+		DrawText(FString::Printf(TEXT("%s %s"), DiffKeys[I], *Row.DisplayName),
+		         int32(Diff) == I ? TextMain : TextMuted, CX - 180.f + I * 170.f, Y);
+	}
+	Y += 60.f;
+
+	DrawText(TEXT("ПРОБЕЛ — начать операцию"), FLinearColor(0.88f, 0.7f, 0.24f), CX - 140.f, Y, nullptr, 1.2f);
+	Y += 50.f;
+	DrawText(TEXT("ЛКМ — рамка · ПКМ — приказ · A — атака-движение · S — стоп · F — вся армия на экране"),
+	         TextMuted, CX - 330.f, Y);
+	Y += 22.f;
+	DrawText(TEXT("Ctrl+1..9 — группы · H — к базе · колесо — зум · миникарта кликабельна · R после боя — заново"),
+	         TextMuted, CX - 330.f, Y);
 }
 
 void ARTSHUD::DrawPanelRect(float X, float Y, float W, float H)
@@ -229,6 +325,131 @@ void ARTSHUD::DrawSelectionPanel(ARTSPlayerController* RTSController)
 	}
 }
 
+// --- миникарта --------------------------------------------------------------------
+
+void ARTSHUD::DrawMinimap()
+{
+	UWorld* World = GetWorld();
+	URTSEconomySubsystem* Econ = World ? World->GetSubsystem<URTSEconomySubsystem>() : nullptr;
+	URTSFogSubsystem* Fog = World ? World->GetSubsystem<URTSFogSubsystem>() : nullptr;
+	URTSDataSubsystem* Data = World && World->GetGameInstance()
+		? World->GetGameInstance()->GetSubsystem<URTSDataSubsystem>() : nullptr;
+	if (!Econ || !Data)
+	{
+		return;
+	}
+	const FRTSMinimapLayout Layout = GetMinimapLayout(Canvas->SizeX, Canvas->SizeY);
+
+	// подложка «бумага» + рамка
+	DrawRect(FLinearColor(0.72f, 0.67f, 0.5f, 0.95f), Layout.X, Layout.Y, Layout.Size, Layout.Size);
+	DrawRect(ConsoleLine, Layout.X - 2.f, Layout.Y - 2.f, Layout.Size + 4.f, 2.f);
+	DrawRect(ConsoleLine, Layout.X - 2.f, Layout.Y + Layout.Size, Layout.Size + 4.f, 2.f);
+	DrawRect(ConsoleLine, Layout.X - 2.f, Layout.Y, 2.f, Layout.Size);
+	DrawRect(ConsoleLine, Layout.X + Layout.Size, Layout.Y, 2.f, Layout.Size);
+
+	// туман: агрегируем сетку 64×64 в блоки 2×2 (32×32 прямоугольников)
+	if (Fog)
+	{
+		const int32 Block = 2;
+		const int32 N = URTSFogSubsystem::GridSize / Block; // 32
+		const float Cell = Layout.Size / float(N);
+		for (int32 BY = 0; BY < N; ++BY)
+		{
+			for (int32 BX = 0; BX < N; ++BX)
+			{
+				uint8 MaxState = 0;
+				for (int32 DY = 0; DY < Block; ++DY)
+				{
+					for (int32 DX = 0; DX < Block; ++DX)
+					{
+						MaxState = FMath::Max(MaxState, Fog->CellAt(BX * Block + DX, BY * Block + DY));
+					}
+				}
+				if (MaxState == 2)
+				{
+					continue; // видно — бумага без затемнения
+				}
+				// сетка X — вертикаль миникарты (верх = +X): тайл (BX,BY) — мир
+				// X = BY-строка? Нет: CellAt(X,Y): X — мировой X-столбец? В фоге
+				// X — столбец по мировому X, Y — по Y. Мир→мини: U от Y, V от X.
+				const float PX = Layout.X + (float(BY) + 0.f) * Cell;          // U ← мировой Y (BY)
+				const float PY = Layout.Y + Layout.Size - (float(BX) + 1.f) * Cell; // V ← мировой X (BX)
+				const float Alpha = MaxState == 1 ? 0.35f : 0.85f;
+				DrawRect(FLinearColor(0.05f, 0.055f, 0.065f, Alpha), PX, PY, Cell + 0.5f, Cell + 0.5f);
+			}
+		}
+	}
+
+	// склады
+	for (ASupplyDepot* Depot : Econ->GetAllDepots())
+	{
+		if (!IsValid(Depot) || !Depot->HasSupplies())
+		{
+			continue;
+		}
+		if (Fog && !Fog->IsExplored(Depot->GetActorLocation()))
+		{
+			continue;
+		}
+		const FVector2D P = WorldToMinimap(Layout, Depot->GetActorLocation());
+		DrawRect(FLinearColor(0.9f, 0.85f, 0.5f), P.X - 2.f, P.Y - 2.f, 4.f, 4.f);
+	}
+
+	// здания (враг — только разведанные), мигание атакованных
+	const float Now = World->GetTimeSeconds();
+	for (ABuildingBase* Building : Econ->GetAllBuildings())
+	{
+		if (!IsValid(Building))
+		{
+			continue;
+		}
+		if (Building->TeamId != 0 && !Building->bSeenByPlayer)
+		{
+			continue;
+		}
+		const FVector2D P = WorldToMinimap(Layout, Building->GetActorLocation());
+		DrawRect(Data->GetFaction(Building->Faction).Color, P.X - 3.f, P.Y - 3.f, 6.f, 6.f);
+		if (Building->TeamId == 0 && Now - Building->LastDamagedTime < 3.f &&
+			FMath::Fmod(Now, 0.5f) < 0.25f)
+		{
+			DrawRect(FLinearColor(1.f, 0.25f, 0.15f), P.X - 5.f, P.Y - 5.f, 10.f, 2.f);
+			DrawRect(FLinearColor(1.f, 0.25f, 0.15f), P.X - 5.f, P.Y + 3.f, 10.f, 2.f);
+		}
+	}
+
+	// юниты (враг — только в зоне видимости)
+	for (AUnitBase* Unit : Econ->GetAllUnits())
+	{
+		if (!IsValid(Unit))
+		{
+			continue;
+		}
+		if (Unit->TeamId != 0 && Fog && !Fog->IsVisibleFor(0, Unit->GetActorLocation()))
+		{
+			continue;
+		}
+		const FVector2D P = WorldToMinimap(Layout, Unit->GetActorLocation());
+		DrawRect(Data->GetFaction(Unit->Faction).Color, P.X - 1.5f, P.Y - 1.5f, 3.f, 3.f);
+	}
+
+	// рамка обзора камеры
+	if (ARTSPlayerController* RTSController = Cast<ARTSPlayerController>(PlayerOwner))
+	{
+		if (const APawn* CamPawn = RTSController->GetPawn())
+		{
+			const ARTSCameraPawn* Cam = Cast<ARTSCameraPawn>(CamPawn);
+			const float HalfView = Cam ? Cam->GetArmLength() * 0.55f : 1500.f;
+			const FVector2D C = WorldToMinimap(Layout, CamPawn->GetActorLocation());
+			const float R = HalfView / RTSCore::MapHalfSize * Layout.Size * 0.5f;
+			const FLinearColor Frame(0.95f, 0.93f, 0.87f, 0.9f);
+			DrawRect(Frame, C.X - R, C.Y - R, R * 2.f, 1.f);
+			DrawRect(Frame, C.X - R, C.Y + R, R * 2.f, 1.f);
+			DrawRect(Frame, C.X - R, C.Y - R, 1.f, R * 2.f);
+			DrawRect(Frame, C.X + R, C.Y - R, 1.f, R * 2.f);
+		}
+	}
+}
+
 void ARTSHUD::DrawEndBanner()
 {
 	UWorld* World = GetWorld();
@@ -263,4 +484,6 @@ void ARTSHUD::DrawEndBanner()
 	{
 		DrawText(Lines[I], TextMain, CenterX - 190.f, CenterY + 60.f + I * 26.f);
 	}
+	DrawText(TEXT("R — новая операция"), FLinearColor(0.88f, 0.7f, 0.24f),
+	         CenterX - 90.f, CenterY + 60.f + Lines.Num() * 26.f + 30.f, nullptr, 1.2f);
 }
