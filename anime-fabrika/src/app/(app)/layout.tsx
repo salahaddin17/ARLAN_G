@@ -37,7 +37,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           ))}
         </nav>
         <div className="border-t p-3">
-          <p className="mb-2 truncate px-1 text-xs text-muted-foreground">{user?.email}</p>
+          <p className="mb-2 truncate px-1 text-xs text-muted-foreground">
+            {user?.email ?? (process.env.DEMO_MODE === '1' ? 'демо-режим' : '')}
+          </p>
           <form action={signOut}>
             <Button variant="ghost" size="sm" className="w-full justify-start gap-2">
               <LogOut className="h-4 w-4" /> Выйти

@@ -4,6 +4,9 @@ import { NextResponse, type NextRequest } from 'next/server'
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request })
 
+  // Демо-режим: конвейер без Supabase Auth (локальный просмотр, скриншоты)
+  if (process.env.DEMO_MODE === '1') return response
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
