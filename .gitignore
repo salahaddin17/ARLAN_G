@@ -1,0 +1,35 @@
+# --- Unreal Engine ---
+Binaries/
+DerivedDataCache/
+Intermediate/
+Saved/
+Build/
+Platforms/*/Binaries/
+Platforms/*/Intermediate/
+
+# Visual Studio / Rider
+.vs/
+.idea/
+*.sln
+*.suo
+*.opensdf
+*.sdf
+*.VC.db
+*.VC.opendb
+*.code-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Псевдосборка (артефакты shim-проверки)
+Tools/shim/gen/
+Tools/shim/build/
+
+# --- prototype-web ---
+prototype-web/node_modules/
+prototype-web/dist/
+*.log
+
+# корневой node_modules (от прототипа)
+node_modules/

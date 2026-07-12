@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>РУБЕЖ: АРЛАН</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23c8bb8f'/%3E%3Ccircle cx='16' cy='16' r='9' fill='%230e8f83' stroke='%2326221c' stroke-width='2'/%3E%3Cpath d='M10 10l12 12M22 10L10 22' stroke='%2326221c' stroke-width='2'/%3E%3C/svg%3E" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #15171c; }
+    body { font-family: "Segoe UI", Roboto, Arial, sans-serif; }
+    #game { display: block; width: 100vw; height: 100vh; cursor: crosshair; }
+    .overlay {
+      position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+      background: radial-gradient(ellipse at center, #23262e 0%, #101216 75%);
+      color: #d7d2c4; z-index: 10;
+    }
+    .overlay.hidden { display: none; }
+    .panel { text-align: center; max-width: 760px; padding: 32px; }
+    .title {
+      font-size: 52px; font-weight: 800; letter-spacing: 10px; color: #d7d2c4;
+      text-shadow: 0 2px 0 #000;
+    }
+    .title .accent { color: #0e8f83; }
+    .subtitle { margin-top: 6px; font-size: 14px; letter-spacing: 6px; color: #8f8a7c; text-transform: uppercase; }
+    .section-label { margin: 28px 0 10px; font-size: 12px; letter-spacing: 4px; color: #8f8a7c; text-transform: uppercase; }
+    .cards { display: flex; gap: 16px; justify-content: center; }
+    .card {
+      flex: 1; max-width: 300px; border: 2px solid #3a3e48; border-radius: 6px; padding: 18px 16px;
+      background: #1b1e24; cursor: pointer; transition: border-color .15s, transform .1s; text-align: left;
+    }
+    .card:hover { transform: translateY(-2px); }
+    .card.sel-teal { border-color: #0e8f83; box-shadow: 0 0 18px rgba(14,143,131,.35); }
+    .card.sel-orange { border-color: #d95f18; box-shadow: 0 0 18px rgba(217,95,24,.35); }
+    .card h3 { font-size: 20px; margin-bottom: 6px; letter-spacing: 1px; }
+    .card .tag { display: inline-block; width: 14px; height: 14px; border-radius: 50%; margin-right: 8px; border: 2px solid #0c0d10; vertical-align: -1px; }
+    .card p { font-size: 13px; color: #9a958a; line-height: 1.5; }
+    .diffs { display: flex; gap: 10px; justify-content: center; }
+    .diff {
+      padding: 10px 22px; border: 2px solid #3a3e48; border-radius: 6px; background: #1b1e24;
+      color: #b9b4a6; cursor: pointer; font-size: 14px; letter-spacing: 1px;
+    }
+    .diff.sel { border-color: #b9b4a6; color: #fff; background: #262a32; }
+    .start-btn {
+      margin-top: 34px; padding: 14px 66px; font-size: 18px; font-weight: 700; letter-spacing: 4px;
+      background: #0e8f83; color: #06110f; border: none; border-radius: 4px; cursor: pointer;
+    }
+    .start-btn:hover { filter: brightness(1.15); }
+    .hint { margin-top: 22px; font-size: 12px; color: #6d6a60; line-height: 1.8; }
+    kbd { background: #262a32; border: 1px solid #3a3e48; border-radius: 3px; padding: 1px 6px; font-size: 11px; color: #c9c4b6; }
+
+    /* Экран окончания */
+    #end-overlay .panel { position: relative; }
+    .stamp {
+      display: inline-block; padding: 14px 44px; font-size: 64px; font-weight: 900; letter-spacing: 12px;
+      border: 6px solid; border-radius: 8px; transform: rotate(-8deg); margin-bottom: 30px;
+      text-transform: uppercase; box-shadow: 0 0 0 2px rgba(0,0,0,.4) inset;
+    }
+    .stamp.win { color: #0e8f83; border-color: #0e8f83; text-shadow: 0 0 24px rgba(14,143,131,.5); }
+    .stamp.lose { color: #c8452c; border-color: #c8452c; text-shadow: 0 0 24px rgba(200,69,44,.5); }
+    .stats-table { margin: 0 auto; border-collapse: collapse; min-width: 460px; }
+    .stats-table td { padding: 7px 18px; font-size: 15px; border-bottom: 1px solid #2b2f38; }
+    .stats-table td:first-child { color: #8f8a7c; text-align: left; }
+    .stats-table td:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
+    .stats-table th { padding: 7px 18px; font-size: 12px; letter-spacing: 2px; color: #6d6a60; text-transform: uppercase; text-align: right; }
+    .stats-table th:first-child { text-align: left; }
+  </style>
+  <script type="module" crossorigin src="/assets/index-B-nlnv0v.js"></script>
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <div id="menu-overlay" class="overlay">
+    <div class="panel">
+      <div class="title">РУБЕЖ: <span class="accent">АРЛАН</span></div>
+      <div class="subtitle">тактическая операция · штабная карта</div>
+
+      <div class="section-label">Выбор фракции</div>
+      <div class="cards">
+        <div class="card sel-teal" id="pick-legion">
+          <h3><span class="tag" style="background:#0e8f83"></span>Легион</h3>
+          <p>Регулярная армия. Дорогая, крепкая техника: +15% к цене и прочности каждого юнита.</p>
+        </div>
+        <div class="card" id="pick-front">
+          <h3><span class="tag" style="background:#d95f18"></span>Вольный фронт</h3>
+          <p>Мобильное ополчение. Дешёвые и быстрые юниты: −15% цены, −10% прочности, +10% к скорости.</p>
+        </div>
+      </div>
+
+      <div class="section-label">Сложность противника</div>
+      <div class="diffs">
+        <div class="diff" id="diff-easy">Рекрут</div>
+        <div class="diff sel" id="diff-normal">Ветеран</div>
+        <div class="diff" id="diff-hard">Комиссар</div>
+      </div>
+
+      <button class="start-btn" id="start-btn">В БОЙ</button>
+
+      <div class="hint">
+        <kbd>ЛКМ</kbd> выделение рамкой &nbsp; <kbd>ПКМ</kbd> приказ &nbsp; <kbd>A</kbd> атака-движение &nbsp; <kbd>S</kbd> стоп &nbsp;
+        <kbd>Ctrl+1..9</kbd> группы<br/>
+        <kbd>WASD</kbd> / края экрана — камера &nbsp; <kbd>колесо</kbd> — зум &nbsp; миникарта кликабельна.
+        Победа — уничтожьте все здания противника.
+      </div>
+    </div>
+  </div>
+
+  <div id="end-overlay" class="overlay hidden">
+    <div class="panel">
+      <div id="end-stamp" class="stamp win">ПОБЕДА</div>
+      <div id="end-stats"></div>
+      <button class="start-btn" id="again-btn" style="margin-top:28px">СЫГРАТЬ ЕЩЁ</button>
+    </div>
+  </div>
+
+</body>
+</html>
