@@ -11,6 +11,7 @@
 #include "Econ/RTSEconomySubsystem.h"
 #include "Econ/SupplyDepot.h"
 #include "Fog/RTSFogSubsystem.h"
+#include "Fx/RTSFxSubsystem.h"
 #include "Engine/Canvas.h"
 #include "Engine/World.h"
 #include "Engine/GameInstance.h"
@@ -44,10 +45,43 @@ void ARTSHUD::DrawHUD()
 
 	DrawTopBar(RTSController);
 	DrawWorldBars(RTSController);
+	DrawDamageNumbers(RTSController);
 	DrawSelectionPanel(RTSController);
 	DrawMinimap();
 	DrawMarquee(RTSController);
 	DrawEndBanner();
+}
+
+/** Летящие цифры урона: подъём и растворение. */
+void ARTSHUD::DrawDamageNumbers(ARTSPlayerController* RTSController)
+{
+	UWorld* World = GetWorld();
+	URTSFxSubsystem* Fx = World ? World->GetSubsystem<URTSFxSubsystem>() : nullptr;
+	URTSFogSubsystem* Fog = World ? World->GetSubsystem<URTSFogSubsystem>() : nullptr;
+	if (!Fx || !RTSController)
+	{
+		return;
+	}
+	Fx->Advance(World->GetDeltaSeconds());
+
+	for (const FRTSDamageNumber& Number : Fx->GetNumbers())
+	{
+		if (Fog && !Fog->IsVisibleFor(0, Number.WorldPos))
+		{
+			continue; // бой в тумане не подглядываем
+		}
+		const float T = Number.Age / URTSFxSubsystem::NumberLifetime; // 0..1
+		FVector2D Screen;
+		if (!RTSController->ProjectWorldLocationToScreen(Number.WorldPos, Screen))
+		{
+			continue;
+		}
+		FLinearColor Color = Number.Color;
+		Color.A = 1.f - T * T;
+		const float Scale = 1.05f + 0.25f * (1.f - T);
+		DrawText(FString::Printf(TEXT("-%d"), FMath::Max(1, FMath::RoundToInt(Number.Amount))),
+		         Color, Screen.X - 10.f, Screen.Y - 46.f * T, nullptr, Scale);
+	}
 }
 
 void ARTSHUD::DrawHpBar(float X, float Y, float W, float Fraction)
@@ -432,7 +466,9 @@ void ARTSHUD::DrawMinimap()
 	}
 	const FRTSMinimapLayout Layout = GetMinimapLayout(Canvas->SizeX, Canvas->SizeY);
 
-	// подложка «бумага» + рамка
+	// заголовок и подложка «бумага» + рамка
+	DrawRect(ConsoleBg, Layout.X - 2.f, Layout.Y - 22.f, Layout.Size + 4.f, 20.f);
+	DrawText(TEXT("ОПЕРАТИВНАЯ КАРТА"), TextMuted, Layout.X + 6.f, Layout.Y - 19.f, nullptr, 0.85f);
 	DrawRect(FLinearColor(0.72f, 0.67f, 0.5f, 0.95f), Layout.X, Layout.Y, Layout.Size, Layout.Size);
 	DrawRect(ConsoleLine, Layout.X - 2.f, Layout.Y - 2.f, Layout.Size + 4.f, 2.f);
 	DrawRect(ConsoleLine, Layout.X - 2.f, Layout.Y + Layout.Size, Layout.Size + 4.f, 2.f);

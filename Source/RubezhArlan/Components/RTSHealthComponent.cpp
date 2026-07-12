@@ -3,6 +3,7 @@
 #include "Data/RTSDataSubsystem.h"
 #include "Units/UnitBase.h"
 #include "Buildings/BuildingBase.h"
+#include "Fx/RTSFxSubsystem.h"
 #include "Engine/World.h"
 #include "Engine/GameInstance.h"
 
@@ -39,6 +40,27 @@ float URTSHealthComponent::ApplyTypedDamage(float BaseDamage, ERTSDamageType Dam
 
 	const float Damage = BaseDamage * Mul;
 	CurrentHp -= Damage;
+
+	// летящая цифра урона (цвет по типу боеприпаса)
+	if (UWorld* World = GetWorld())
+	{
+		if (URTSFxSubsystem* Fx = World->GetSubsystem<URTSFxSubsystem>())
+		{
+			FLinearColor Color;
+			switch (DamageType)
+			{
+			case ERTSDamageType::Rocket:  Color = FLinearColor(1.f, 0.62f, 0.25f); break;
+			case ERTSDamageType::Shell:   Color = FLinearColor(0.95f, 0.4f, 0.25f); break;
+			case ERTSDamageType::Defense: Color = FLinearColor(0.55f, 0.85f, 0.8f); break;
+			default:                      Color = FLinearColor(0.92f, 0.9f, 0.82f); break;
+			}
+			if (GetOwner())
+			{
+				Fx->AddDamageNumber(GetOwner()->GetActorLocation() + FVector(0, 0, 120.f), Damage, Color);
+			}
+		}
+	}
+
 	NotifyOwnerOfDamage(Attacker);
 
 	if (CurrentHp <= 0.f)

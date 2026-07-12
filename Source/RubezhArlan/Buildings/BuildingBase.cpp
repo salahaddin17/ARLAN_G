@@ -29,9 +29,12 @@ ABuildingBase::ABuildingBase()
 	BodyMesh->SetCollisionProfileName(TEXT("BlockAll"));
 
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeFinder(TEXT("/Engine/BasicShapes/Cube.Cube"));
-	if (CubeFinder.Succeeded())
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> CylinderFinder(TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
+	CubeMesh = CubeFinder.Succeeded() ? CubeFinder.Object : nullptr;
+	CylinderMesh = CylinderFinder.Succeeded() ? CylinderFinder.Object : nullptr;
+	if (CubeMesh)
 	{
-		BodyMesh->SetStaticMesh(CubeFinder.Object);
+		BodyMesh->SetStaticMesh(CubeMesh);
 	}
 
 	Health = CreateDefaultSubobject<URTSHealthComponent>(TEXT("Health"));
@@ -154,8 +157,57 @@ void ABuildingBase::SetupVisual()
 	const FBuildingRow& Row = Data->GetBuilding(BuildingKind);
 	const float H = BuildingHeights[FMath::Clamp<int32>(int32(BuildingKind), 0, 4)];
 	// куб 100×100×100 → скейл в клетки
-	BodyMesh->SetRelativeScale3D(FVector(Row.SizeX, Row.SizeY, H / 100.f));
+	BodyBaseScale = FVector(Row.SizeX, Row.SizeY, H / 100.f);
+	BodyMesh->SetRelativeScale3D(BodyBaseScale);
+
+	// турель: вращающаяся голова со стволом поверх основания
+	if (BuildingKind == ERTSBuildingKind::Turret && !HeadPart)
+	{
+		auto MakePart = [this](UStaticMesh* Mesh, USceneComponent* Parent, const FVector& Loc,
+		                       const FVector& Scale, const FLinearColor& Color) -> UStaticMeshComponent*
+		{
+			UStaticMeshComponent* Part = NewObject<UStaticMeshComponent>(this);
+			if (!Part)
+			{
+				return nullptr;
+			}
+			Part->SetupAttachment(Parent);
+			Part->RegisterComponent();
+			if (Mesh)
+			{
+				Part->SetStaticMesh(Mesh);
+			}
+			Part->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			Part->SetCanEverAffectNavigation(false);
+			Part->SetRelativeLocation(Loc);
+			Part->SetRelativeScale3D(Scale);
+			if (UMaterialInstanceDynamic* Mid = Part->CreateAndSetMaterialInstanceDynamic(0))
+			{
+				Mid->SetVectorParameterValue(TEXT("Color"), Color);
+			}
+			return Part;
+		};
+		const FLinearColor FactionColor = Data->GetFaction(Faction).Color;
+		HeadPart = MakePart(CylinderMesh, BodyMesh, FVector(0, 0, 60.f),
+		                    FVector(0.55f, 0.55f, 0.4f), FactionColor * 0.7f);
+		if (HeadPart)
+		{
+			BarrelPart = MakePart(CubeMesh, HeadPart, FVector(0.85f, 0, 0.2f),
+			                      FVector(1.5f, 0.14f, 0.14f), FLinearColor(0.10f, 0.09f, 0.075f));
+		}
+	}
 	UpdateConstructionVisual();
+}
+
+void ABuildingBase::SetAimPoint(const FVector& WorldPoint)
+{
+	AimPoint = WorldPoint;
+	AimFreshness = 0.f;
+}
+
+void ABuildingBase::OnWeaponFired()
+{
+	RecoilOffset = 1.f;
 }
 
 void ABuildingBase::UpdateConstructionVisual()
@@ -171,6 +223,12 @@ void ABuildingBase::UpdateConstructionVisual()
 		// стройплощадка — приглушённый цвет, готовое — полный
 		const float K = IsCompleted() ? 1.f : 0.25f + 0.5f * BuildProgress;
 		Mid->SetVectorParameterValue(TEXT("Color"), Base * K);
+	}
+	// корпус «вырастает» из земли по мере стройки
+	if (!IsCompleted())
+	{
+		const float GrowZ = 0.15f + 0.85f * BuildProgress;
+		BodyMesh->SetRelativeScale3D(FVector(BodyBaseScale.X, BodyBaseScale.Y, BodyBaseScale.Z * GrowZ));
 	}
 }
 
@@ -194,6 +252,7 @@ void ABuildingBase::AddConstructionProgress(float WorkSeconds)
 	if (IsCompleted())
 	{
 		Health->AddHp(Health->GetMaxHp()); // добить до полной
+		CompletePop = 1.f;                 // «отскок» масштаба при вводе в строй
 		if (UWorld* World = GetWorld())
 		{
 			if (URTSEconomySubsystem* Econ = World->GetSubsystem<URTSEconomySubsystem>())
@@ -222,7 +281,12 @@ void ABuildingBase::RepairTick(float DeltaSeconds)
 void ABuildingBase::Tick(float DeltaSeconds)
 {
 	AActor::Tick(DeltaSeconds);
-	if (bDying || !IsCompleted())
+	if (bDying)
+	{
+		return;
+	}
+	TickVisuals(DeltaSeconds);
+	if (!IsCompleted())
 	{
 		return;
 	}
@@ -238,6 +302,59 @@ void ABuildingBase::Tick(float DeltaSeconds)
 	{
 		Weapon->TickCooldown(DeltaSeconds);
 		TickTurret(DeltaSeconds);
+	}
+}
+
+void ABuildingBase::TickVisuals(float DeltaSeconds)
+{
+	AimFreshness += DeltaSeconds;
+	if (!BodyMesh)
+	{
+		return;
+	}
+
+	// «отскок» при завершении стройки + лёгкий пульс работающего производства
+	if (IsCompleted())
+	{
+		float Scale = 1.f;
+		if (CompletePop > 0.f)
+		{
+			CompletePop = FMath::Max(0.f, CompletePop - DeltaSeconds * 3.f);
+			Scale += 0.08f * FMath::Sin(CompletePop * 3.1415926f);
+		}
+		else if (Production && Production->GetQueue().Num() > 0 && GetWorld())
+		{
+			Scale += 0.012f * FMath::Sin(GetWorld()->GetTimeSeconds() * 4.f);
+		}
+		BodyMesh->SetRelativeScale3D(FVector(BodyBaseScale.X * Scale, BodyBaseScale.Y * Scale, BodyBaseScale.Z));
+	}
+
+	// голова турели: доворот на цель / медленное сканирование
+	if (HeadPart)
+	{
+		float Desired = HeadYaw;
+		float TurnSpeed = 40.f; // сканирование
+		if (AimFreshness < 1.5f)
+		{
+			const FVector To = AimPoint - GetActorLocation();
+			Desired = FMath::RadiansToDegrees(FMath::Atan2(float(To.Y), float(To.X)));
+			TurnSpeed = 300.f;
+		}
+		else if (GetWorld())
+		{
+			Desired = FMath::Sin(GetWorld()->GetTimeSeconds() * 0.5f) * 60.f +
+				(TeamId == 0 ? 45.f : 225.f); // «смотрит» в сторону фронта
+		}
+		float Diff = Desired - HeadYaw;
+		while (Diff > 180.f) { Diff -= 360.f; }
+		while (Diff < -180.f) { Diff += 360.f; }
+		HeadYaw += FMath::Clamp(Diff, -TurnSpeed * DeltaSeconds, TurnSpeed * DeltaSeconds);
+		HeadPart->SetRelativeRotation(FRotator(0.f, HeadYaw, 0.f));
+	}
+	if (BarrelPart && RecoilOffset > 0.001f)
+	{
+		RecoilOffset = FMath::Max(0.f, RecoilOffset - DeltaSeconds * 6.f);
+		BarrelPart->SetRelativeLocation(FVector(0.85f * (1.f - RecoilOffset * 0.3f), 0, 0.2f));
 	}
 }
 

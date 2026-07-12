@@ -46,6 +46,11 @@ public:
 	void HandleDeath(AActor* Killer);
 	void NotifyDamaged(AActor* Attacker);
 
+	/** Оружие сообщает точку прицеливания (доворот башни турели). */
+	void SetAimPoint(const FVector& WorldPoint);
+	/** Оружие сообщает о выстреле (отдача ствола). */
+	void OnWeaponFired();
+
 	URTSDataSubsystem* GetData() const;
 
 	UPROPERTY(VisibleAnywhere, Category = "RTS") ERTSBuildingKind BuildingKind = ERTSBuildingKind::Power;
@@ -72,7 +77,20 @@ private:
 	float TurretScanAccum = 0.f;
 	TWeakObjectPtr<AActor> TurretTarget;
 
+	// процедурный риг турели и анимации
+	UPROPERTY() TObjectPtr<UStaticMeshComponent> HeadPart;
+	UPROPERTY() TObjectPtr<UStaticMeshComponent> BarrelPart;
+	UPROPERTY() TObjectPtr<class UStaticMesh> CylinderMesh;
+	UPROPERTY() TObjectPtr<class UStaticMesh> CubeMesh;
+	float HeadYaw = 0.f;
+	float RecoilOffset = 0.f;
+	FVector AimPoint = FVector::ZeroVector;
+	float AimFreshness = 1e9f;
+	float CompletePop = 0.f;      // «отскок» масштаба при завершении стройки
+	FVector BodyBaseScale = FVector(1, 1, 1);
+
 	void SetupVisual();
 	void UpdateConstructionVisual();
 	void TickTurret(float DeltaSeconds);
+	void TickVisuals(float DeltaSeconds);
 };

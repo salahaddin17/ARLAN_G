@@ -17,15 +17,22 @@ class RUBEZHARLAN_API ARTSCameraPawn : public APawn
 public:
 	ARTSCameraPawn();
 
+	virtual void Tick(float DeltaSeconds) override;
+
 	/** Сдвиг точки взгляда в плоскости карты (мировые UU), с клампом границ. */
 	void PanWorld(const FVector2D& Delta);
 
-	/** Зум: положительный Delta — приближение. */
+	/** Зум: положительный Delta — приближение (плавная интерполяция). */
 	void Zoom(float Delta);
 
 	void CenterOn(const FVector& WorldPos);
 
 	float GetArmLength() const;
+
+private:
+	float TargetArmLength = 3200.f;
+
+public:
 
 	UPROPERTY(VisibleAnywhere, Category = "RTS") TObjectPtr<USceneComponent> SceneRoot;
 	UPROPERTY(VisibleAnywhere, Category = "RTS") TObjectPtr<USpringArmComponent> SpringArm;

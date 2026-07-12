@@ -7,7 +7,7 @@
 
 ARTSCameraPawn::ARTSCameraPawn()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = true;
 
 	SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
 	SetRootComponent(SceneRoot);
@@ -35,10 +35,17 @@ void ARTSCameraPawn::PanWorld(const FVector2D& Delta)
 	SetActorLocation(Loc);
 }
 
+void ARTSCameraPawn::Tick(float DeltaSeconds)
+{
+	APawn::Tick(DeltaSeconds);
+	// плавный зум: стрела тянется к целевой длине
+	const float Alpha = FMath::Clamp(DeltaSeconds * 9.f, 0.f, 1.f);
+	SpringArm->TargetArmLength = FMath::Lerp(SpringArm->TargetArmLength, TargetArmLength, Alpha);
+}
+
 void ARTSCameraPawn::Zoom(float Delta)
 {
-	SpringArm->TargetArmLength =
-		FMath::Clamp(SpringArm->TargetArmLength - Delta * ZoomStep, MinArm, MaxArm);
+	TargetArmLength = FMath::Clamp(TargetArmLength - Delta * ZoomStep, MinArm, MaxArm);
 }
 
 void ARTSCameraPawn::CenterOn(const FVector& WorldPos)

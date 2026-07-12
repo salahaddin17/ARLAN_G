@@ -639,6 +639,7 @@ public:
 	FRotator GetActorRotation() const { return Rotation; }
 	bool SetActorRotation(const FRotator& In) { Rotation = In; return true; }
 	FVector GetActorForwardVector() const { return Rotation.Vector(); }
+	FVector GetVelocity() const { return FVector(); }
 	void SetActorHiddenInGame(bool bHidden) { bHiddenInGame = bHidden; }
 	bool IsHidden() const { return bHiddenInGame; }
 	void SetActorEnableCollision(bool) {}

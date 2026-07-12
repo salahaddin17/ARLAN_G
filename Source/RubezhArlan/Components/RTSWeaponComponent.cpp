@@ -64,6 +64,17 @@ ERTSFireResult URTSWeaponComponent::TryFireAt(AActor* Target, float CooldownScal
 	{
 		return ERTSFireResult::Invalid;
 	}
+
+	// целимся (доворот башни) даже во время перезарядки
+	if (AUnitBase* OwnerUnit = Cast<AUnitBase>(Owner))
+	{
+		OwnerUnit->SetAimPoint(Target->GetActorLocation());
+	}
+	else if (ABuildingBase* OwnerBuilding = Cast<ABuildingBase>(Owner))
+	{
+		OwnerBuilding->SetAimPoint(Target->GetActorLocation());
+	}
+
 	if (!IsReady())
 	{
 		return ERTSFireResult::NotReady;
@@ -93,6 +104,16 @@ ERTSFireResult URTSWeaponComponent::TryFireAt(AActor* Target, float CooldownScal
 	}
 
 	CooldownRemaining = Cooldown * FMath::Max(0.1f, CooldownScale);
+
+	// анимация выстрела: отдача + вспышка
+	if (AUnitBase* OwnerUnit = Cast<AUnitBase>(Owner))
+	{
+		OwnerUnit->OnWeaponFired();
+	}
+	else if (ABuildingBase* OwnerBuilding = Cast<ABuildingBase>(Owner))
+	{
+		OwnerBuilding->OnWeaponFired();
+	}
 
 	const FVector From = Owner->GetActorLocation() + FVector(0, 0, 60);
 	const FVector To = Target->GetActorLocation() + FVector(0, 0, 40);
