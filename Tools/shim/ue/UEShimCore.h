@@ -793,6 +793,30 @@ public:
 
 class APlayerStart : public AActor {};
 
+// --- свет ---------------------------------------------------------------------------------
+
+namespace EComponentMobility { enum Type { Static, Stationary, Movable }; }
+
+class ULightComponent : public USceneComponent
+{
+public:
+	void SetMobility(EComponentMobility::Type) {}
+	void SetIntensity(float) {}
+	void SetCastShadows(bool) {}
+	void SetLightColor(const FLinearColor&) {}
+};
+
+class ALight : public AActor
+{
+public:
+	ALight() { LightComp = new ULightComponent(); }
+	ULightComponent* GetLightComponent() const { return LightComp; }
+	ULightComponent* LightComp;
+};
+
+class ADirectionalLight : public ALight {};
+class ASkyLight : public AActor {};
+
 // --- мир и подсистемы ------------------------------------------------------------------------------
 
 class UGameInstance : public UObject

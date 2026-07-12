@@ -89,7 +89,15 @@ bool ARTSAIController::IsNearPoint(const FVector& Point, float Radius) const
 
 void ARTSAIController::MoveToPoint(const FVector& Point, float AcceptanceRadius)
 {
-	MoveToLocation(Point, AcceptanceRadius, true, true, true);
+	// обычный путь — NavMesh; на уровне без NavMeshBoundsVolume (пустая
+	// сцена) MoveToLocation падает в Failed — тогда идём напрямик:
+	// карта плоская, коллизии зданий разрулит capsule-скольжение + RVO
+	const EPathFollowingRequestResult::Type Result =
+		MoveToLocation(Point, AcceptanceRadius, true, true, true);
+	if (Result == EPathFollowingRequestResult::Failed)
+	{
+		MoveToLocation(Point, AcceptanceRadius, true, false, false);
+	}
 	bMoveIssued = true;
 }
 

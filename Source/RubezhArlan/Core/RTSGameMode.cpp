@@ -10,7 +10,10 @@
 #include "Econ/SupplyDepot.h"
 #include "Fog/RTSFogSubsystem.h"
 #include "AI/EnemyCommander.h"
+#include "Core/RTSGroundActor.h"
 #include "Kismet/GameplayStatics.h"
+#include "Engine/DirectionalLight.h"
+#include "Components/LightComponent.h"
 #include "Engine/World.h"
 
 ARTSGameMode::ARTSGameMode()
@@ -24,12 +27,49 @@ ARTSGameMode::ARTSGameMode()
 void ARTSGameMode::StartPlay()
 {
 	AGameModeBase::StartPlay();
+	EnsureWorldDressing();
 	Phase = ERTSMatchPhase::Setup;
 	if (bSkipSetupMenu)
 	{
 		ConfirmStart();
 	}
 	UE_LOG(LogRubezh, Log, TEXT("РУБЕЖ: АРЛАН — ожидание старта (меню)"));
+}
+
+/**
+ * Самодостаточность на любом уровне: если сцена пустая (нет пола/света,
+ * как на Untitled), игра создаёт «бумажную» землю и два направленных
+ * источника света сама. TestMap из Python-скрипта добавляет NavMesh и
+ * пост-процесс, но для игры больше не обязательна.
+ */
+void ARTSGameMode::EnsureWorldDressing()
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+	FActorSpawnParameters Params;
+	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	World->SpawnActor<ARTSGroundActor>(FVector::ZeroVector, FRotator::ZeroRotator, Params);
+
+	// ключевой свет + мягкий заполняющий с другой стороны
+	ADirectionalLight* Sun = World->SpawnActor<ADirectionalLight>(
+		FVector(0, 0, 2000.f), FRotator(-55.f, 35.f, 0.f), Params);
+	if (Sun && Sun->GetLightComponent())
+	{
+		Sun->GetLightComponent()->SetMobility(EComponentMobility::Movable);
+		Sun->GetLightComponent()->SetIntensity(6.f);
+	}
+	ADirectionalLight* Fill = World->SpawnActor<ADirectionalLight>(
+		FVector(0, 0, 2000.f), FRotator(-35.f, 215.f, 0.f), Params);
+	if (Fill && Fill->GetLightComponent())
+	{
+		Fill->GetLightComponent()->SetMobility(EComponentMobility::Movable);
+		Fill->GetLightComponent()->SetIntensity(1.5f);
+		Fill->GetLightComponent()->SetCastShadows(false);
+	}
 }
 
 void ARTSGameMode::SetPlayerFaction(ERTSFaction Faction)

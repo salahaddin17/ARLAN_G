@@ -53,6 +53,7 @@ private:
 	ERTSMatchPhase Phase = ERTSMatchPhase::Setup;
 	bool bInitialOrdersGiven = false;
 
+	void EnsureWorldDressing();
 	void SpawnWorldContent();
 	ABuildingBase* SpawnBuildingAt(const FVector& Location, ERTSBuildingKind Kind, uint8 TeamId, bool bCompleted);
 	AUnitBase* SpawnUnitAt(const FVector& Location, ERTSUnitKind Kind, uint8 TeamId);
