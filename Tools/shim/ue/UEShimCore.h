@@ -876,6 +876,24 @@ public:
 	static AGameModeBase* GetGameMode(const UObject*) { return nullptr; }
 };
 
+namespace ConstructorHelpers
+{
+	template <typename T>
+	struct FObjectFinder
+	{
+		T* Object = nullptr;
+		explicit FObjectFinder(const TCHAR*) {}
+		bool Succeeded() const { return false; }
+	};
+	template <typename T>
+	struct FClassFinder
+	{
+		TSubclassOf<T> Class;
+		explicit FClassFinder(const TCHAR*) {}
+		bool Succeeded() const { return false; }
+	};
+}
+
 class FDefaultGameModuleImpl {};
 #define IMPLEMENT_PRIMARY_GAME_MODULE(ImplClass, ModuleName, GameName) \
 	static int ModuleAnchor_##ModuleName = 0;
