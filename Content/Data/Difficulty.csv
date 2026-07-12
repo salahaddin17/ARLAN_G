@@ -1,0 +1,4 @@
+Name,DisplayName,IncomeMul,FirstWaveAt,WaveInterval,WaveStart,WaveGrowth,ArmyCap
+Easy,Рекрут,0.80,230,110,3,2,14
+Normal,Ветеран,1.00,190,90,5,3,22
+Hard,Комиссар,1.25,165,72,6,4,32

@@ -1,0 +1,8 @@
+Name,DisplayName,Cost,MaxHp,Speed,Armor,VisionTiles,BuildTime,Damage,Range,Cooldown,DamageType,SplashRadius,MinRange,ProjectileSpeed,CargoCapacity,bInfantry,ProducedAt
+Technician,Техник,120,60,172,INF,5,8,0,0,1,Bullet,0,0,0,0,true,HQ
+Truck,Грузовик,140,150,244,LGT,5,10,0,0,1,Bullet,0,0,0,40,false,HQ
+Rifleman,Пехотинец,60,70,156,INF,6,5,9,345,0.7,Bullet,0,0,0,0,true,Barracks
+Rocketeer,Ракетчик,110,60,144,INF,6,7,26,455,1.9,Rocket,0,0,0,0,true,Barracks
+Scout,Разведмашина,130,120,350,LGT,9,8,8,375,0.35,Bullet,0,0,0,0,false,Factory
+Tank,Танк,320,340,194,HVY,6,14,46,470,2.2,Shell,0,0,0,0,false,Factory
+Artillery,Артиллерия,380,160,144,LGT,6,16,60,830,4.6,Shell,120,220,600,0,false,Factory

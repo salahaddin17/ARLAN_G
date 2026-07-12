@@ -1,0 +1,6 @@
+Name,DisplayName,Cost,MaxHp,SizeX,SizeY,BuildTime,VisionTiles,PowerProduce,PowerUse,Damage,Range,Cooldown,DamageType
+HQ,Командный центр,900,1600,4,3,45,7,10,0,0,0,1,Defense
+Power,Энергостанция,220,500,2,2,14,4,25,0,0,0,1,Defense
+Barracks,Казармы,300,700,3,2,18,5,0,10,0,0,1,Defense
+Factory,Завод техники,520,1000,3,3,26,5,0,15,0,0,1,Defense
+Turret,Турель,260,420,1,1,12,6,0,10,22,580,1.1,Defense
